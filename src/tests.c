@@ -5055,75 +5055,72 @@ int main(int argc, char **argv) {
     printf("random seed = %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", seed16[0], seed16[1], seed16[2], seed16[3], seed16[4], seed16[5], seed16[6], seed16[7], seed16[8], seed16[9], seed16[10], seed16[11], seed16[12], seed16[13], seed16[14], seed16[15]);
 
     /* initialize */
-    run_context_tests();
-    run_scratch_tests();
+    /*//run_context_tests();
+    //run_scratch_tests();*/
     ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     if (secp256k1_rand_bits(1)) {
         secp256k1_rand256(run32);
         CHECK(secp256k1_context_randomize(ctx, secp256k1_rand_bits(1) ? run32 : NULL));
     }
 
-    run_rand_bits();
-    run_rand_int();
-    run_util_tests();
+    /*//run_rand_bits();
+    //run_rand_int();
+    //run_util_tests();
 
-    run_sha256_tests();
-    run_hmac_sha256_tests();
-    run_rfc6979_hmac_sha256_tests();
+    //run_sha256_tests();
+    //run_hmac_sha256_tests();
+    //run_rfc6979_hmac_sha256_tests();*/
 
 #ifndef USE_NUM_NONE
     /* num tests */
     run_num_smalltests();
 #endif
 
-    /* scalar tests */
-    run_scalar_tests();
+    /* scalar tests 
+    //run_scalar_tests();
 
-    /* field tests */
-    run_field_inv();
-    run_field_inv_var();
-    run_field_inv_all_var();
-    run_field_misc();
-    run_field_convert();
-    run_sqr();
-    run_sqrt();
+    // field tests 
+    //run_field_inv();
+    //run_field_inv_var();
+    //run_field_inv_all_var();
+    //run_field_misc();
+    //run_field_convert();
+    //run_sqr();
+    //run_sqrt();
 
-    /* group tests */
-    run_ge();
-    run_group_decompress();
+    // group tests 
+    //run_ge();
+    //run_group_decompress();
 
-    /* ecmult tests */
-    run_wnaf();
-    run_point_times_order();
-    run_ecmult_chain();
-    run_ecmult_constants();
-    run_ecmult_gen_blind();
-    run_ecmult_const_tests();
-    run_ecmult_multi_tests();
-    run_ec_combine();
+    // ecmult tests
+    //run_wnaf();
+    //run_point_times_order();
+    //run_ecmult_chain();
+    //run_ecmult_constants();
+    //run_ecmult_gen_blind();
+    //run_ecmult_const_tests();
+    //run_ecmult_multi_tests();
+    //run_ec_combine();*/
 
     /* endomorphism tests */
 #ifdef USE_ENDOMORPHISM
     run_endomorphism_tests();
 #endif
 
-    /* EC point parser test */
-    run_ec_pubkey_parse_test();
+    /*//run_ec_pubkey_parse_test();
 
-    /* EC key edge cases */
-    run_eckey_edge_case_test();
+    //run_eckey_edge_case_test();*/
 
 #ifdef ENABLE_MODULE_ECDH
     /* ecdh tests */
     run_ecdh_tests();
 #endif
 
-    /* ecdsa tests */
-    run_random_pubkeys();
-    run_ecdsa_der_parse();
-    run_ecdsa_sign_verify();
-    run_ecdsa_end_to_end();
-    run_ecdsa_edge_cases();
+    /*//run_random_pubkeys();
+    //run_ecdsa_der_parse();
+    //run_ecdsa_sign_verify();
+    //run_ecdsa_end_to_end();
+    //run_ecdsa_edge_cases();*/
 #ifdef ENABLE_OPENSSL_TESTS
     run_ecdsa_openssl();
 #endif
@@ -5134,7 +5131,7 @@ int main(int argc, char **argv) {
 #endif
 
 #ifdef ENABLE_MODULE_GENERATOR
-    run_generator_tests();
+    /*//run_generator_tests();*/
 #endif
 
 #ifdef ENABLE_MODULE_RANGEPROOF

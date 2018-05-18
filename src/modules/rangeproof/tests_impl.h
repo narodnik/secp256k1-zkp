@@ -316,6 +316,35 @@ static void test_pedersen(void) {
     CHECK(secp256k1_pedersen_verify_tally(ctx, &cptr[1], 1, &cptr[1], 1));
 }
 
+void print_hex(unsigned char* bytes, int n) {
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%02x", bytes[i]);
+    }
+}
+
+void print_hex_bytes(unsigned char* bytes, int n) {
+    int i;
+    printf("{");
+    for (i = 0; i < n; i++) {
+        printf("0x%02x", bytes[i]);
+        if (i < n - 1)
+            printf(", ");
+    }
+    printf("}");
+}
+
+void print_scalar(const secp256k1_scalar* s) {
+    unsigned char b32[32];
+    secp256k1_scalar_get_b32(b32, s);
+    print_hex(b32, 32);
+}
+
+void print_gej(const secp256k1_gej* pub) {
+    secp256k1_ge p;
+    secp256k1_ge_set_gej(&p, pub);
+}
+
 static void test_borromean(void) {
     unsigned char e0[32];
     secp256k1_scalar s[64];
@@ -331,6 +360,9 @@ static void test_borromean(void) {
     size_t i;
     size_t j;
     int c;
+    secp256k1_ge rge;
+    unsigned char tmp[33];
+    size_t size;
     secp256k1_rand256_test(m);
     nrings = 1 + (secp256k1_rand32()&7);
     c = 0;
@@ -363,6 +395,96 @@ static void test_borromean(void) {
         }
         c += rsizes[i];
     }
+    for (i = 0; i < nrings; i++) {
+        printf("rsize[%i] = %i\n", (int)i, (int)rsizes[i]);
+    }
+    for (i = 0; i < nrings; i++) {
+        printf("secidx[%i] = %i\n", (int)i, (int)secidx[i]);
+    }
+    printf("nrings = %i\n", (int)nrings);
+    for (i = 0; i < nrings; i++) {
+        printf("sec[%i] = ", (int)i);
+        print_scalar(&sec[i]);
+        printf("\n");
+    }
+    printf("\n\n");
+    printf("struct\n{\n");
+    printf("    const data_chunk message = ");
+    print_hex_bytes(m, 32);
+    printf(";\n");
+    printf("    const ec_secret e = base16_literal(\"");
+    print_hex(e0, 32);
+    printf("\");\n");
+    printf("    std::vector<size_t> secret_indexes = {");
+    for (i = 0; i < nrings; i++) {
+        printf("%i", (int)rsizes[i]);
+        if (i < nrings - 1)
+            printf(", ");
+    }
+    printf("};\n");
+    printf("    const secret_list secrets = {\n");
+    for (i = 0; i < nrings; i++) {
+        printf("        base16_literal(\"");
+        print_scalar(&sec[i]);
+        printf("\")");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+    }
+    printf("    };\n");
+    printf("    const key_rings public_rings = {\n");
+    c = 0;
+    for (i = 0; i < nrings; i++) {
+        printf("        {\n");
+        for (j = 0; j < rsizes[i]; j++) {
+            printf("            base16_literal(\"");
+            secp256k1_ge_set_gej_var(&rge, &pubs[c + j]);
+            secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
+            print_hex(tmp, 33);
+            printf("\")");
+            if (j < rsizes[i] - 1)
+                printf(",");
+            printf("\n");
+        }
+        printf("        }");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+        c += rsizes[i];
+    }
+    printf("    };\n");
+    printf("    const secret_list k = {\n");
+    for (i = 0; i < nrings; i++) {
+        printf("        base16_literal(\"");
+        print_scalar(&k[i]);
+        printf("\")");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+    }
+    printf("    };\n");
+    printf("    const ring_signature::s_values_type s = {\n");
+    c = 0;
+    for (i = 0; i < nrings; i++) {
+        printf("        {\n");
+        for (j = 0; j < rsizes[i]; j++) {
+            printf("            base16_literal(\"");
+            print_scalar(&s[c + j]);
+            printf("\")");
+            if (j < rsizes[i] - 1)
+                printf(",");
+            printf("\n");
+        }
+        printf("        }");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+        c += rsizes[i];
+    }
+    printf("    };\n");
+    printf("} test123;\n");
+    printf("\n\n");
+
     CHECK(secp256k1_borromean_sign(&ctx->ecmult_ctx, &ctx->ecmult_gen_ctx, e0, s, pubs, k, sec, rsizes, secidx, nrings, m, 32));
     CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
     i = secp256k1_rand32() % c;
@@ -606,15 +728,17 @@ void test_multiple_generators(void) {
 
 void run_rangeproof_tests(void) {
     int i;
-    test_api();
-    for (i = 0; i < 10*count; i++) {
-        test_pedersen();
-    }
-    for (i = 0; i < 10*count; i++) {
+    /*//test_api();
+    //for (i = 0; i < 10*count; i++) {
+    //    test_pedersen();
+    //}*/
+    printf("test_borromean\n");
+    for (i = 0; i < 1; i++) {
         test_borromean();
     }
-    test_rangeproof();
-    test_multiple_generators();
+    printf("test_borromean done\n");
+    /*//test_rangeproof();
+    //test_multiple_generators();*/
 }
 
 #endif
