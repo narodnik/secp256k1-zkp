@@ -345,7 +345,7 @@ void print_gej(const secp256k1_gej* pub) {
     secp256k1_ge_set_gej(&p, pub);
 }
 
-static void test_borromean(void) {
+static void test_borromean(int iterh) {
     unsigned char e0[32];
     secp256k1_scalar s[64];
     secp256k1_gej pubs[64];
@@ -395,34 +395,21 @@ static void test_borromean(void) {
         }
         c += rsizes[i];
     }
-    for (i = 0; i < nrings; i++) {
-        printf("rsize[%i] = %i\n", (int)i, (int)rsizes[i]);
-    }
-    for (i = 0; i < nrings; i++) {
-        printf("secidx[%i] = %i\n", (int)i, (int)secidx[i]);
-    }
-    printf("nrings = %i\n", (int)nrings);
-    for (i = 0; i < nrings; i++) {
-        printf("sec[%i] = ", (int)i);
-        print_scalar(&sec[i]);
-        printf("\n");
-    }
-    printf("\n\n");
-    printf("struct\n{\n");
-    printf("    const data_chunk message = ");
+    printf("{\n");
+    printf("    .message = ");
     print_hex_bytes(m, 32);
-    printf(";\n");
-    printf("    const ec_secret e = base16_literal(\"");
+    printf(",\n");
+    printf("    .e = base16_literal(\"");
     print_hex(e0, 32);
-    printf("\");\n");
-    printf("    std::vector<size_t> secret_indexes = {");
+    printf("\"),\n");
+    printf("    .secret_indexes = {");
     for (i = 0; i < nrings; i++) {
         printf("%i", (int)rsizes[i]);
         if (i < nrings - 1)
             printf(", ");
     }
-    printf("};\n");
-    printf("    const secret_list secrets = {\n");
+    printf("},\n");
+    printf("    .secrets = {\n");
     for (i = 0; i < nrings; i++) {
         printf("        base16_literal(\"");
         print_scalar(&sec[i]);
@@ -431,8 +418,8 @@ static void test_borromean(void) {
             printf(",");
         printf("\n");
     }
-    printf("    };\n");
-    printf("    const key_rings public_rings = {\n");
+    printf("    },\n");
+    printf("    .public_rings = {\n");
     c = 0;
     for (i = 0; i < nrings; i++) {
         printf("        {\n");
@@ -452,8 +439,8 @@ static void test_borromean(void) {
         printf("\n");
         c += rsizes[i];
     }
-    printf("    };\n");
-    printf("    const secret_list k = {\n");
+    printf("    },\n");
+    printf("    .k = {\n");
     for (i = 0; i < nrings; i++) {
         printf("        base16_literal(\"");
         print_scalar(&k[i]);
@@ -462,8 +449,8 @@ static void test_borromean(void) {
             printf(",");
         printf("\n");
     }
-    printf("    };\n");
-    printf("    const ring_signature::s_values_type s = {\n");
+    printf("    },\n");
+    printf("    .s = {\n");
     c = 0;
     for (i = 0; i < nrings; i++) {
         printf("        {\n");
@@ -481,9 +468,11 @@ static void test_borromean(void) {
         printf("\n");
         c += rsizes[i];
     }
-    printf("    };\n");
-    printf("} test123;\n");
-    printf("\n\n");
+    printf("    },\n");
+    printf("}");
+    if (iterh < 40 - 1)
+        printf(",");
+    printf("\n");
 
     CHECK(secp256k1_borromean_sign(&ctx->ecmult_ctx, &ctx->ecmult_gen_ctx, e0, s, pubs, k, sec, rsizes, secidx, nrings, m, 32));
     CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
@@ -732,11 +721,22 @@ void run_rangeproof_tests(void) {
     //for (i = 0; i < 10*count; i++) {
     //    test_pedersen();
     //}*/
-    printf("test_borromean\n");
-    for (i = 0; i < 1; i++) {
-        test_borromean();
+    printf("\n\n");
+    printf("struct ring_signature_test_vector_type\n{\n");
+    printf("    const data_chunk message;\n");
+    printf("    const ec_secret e;\n");
+    printf("    const std::vector<size_t> secret_indexes;\n");
+    printf("    const secret_list secrets;\n");
+    printf("    const key_rings public_rings;\n");
+    printf("    const secret_list k;\n");
+    printf("    const ring_signature::s_values_type s;\n");
+    printf("};\n\n");
+    printf("ring_signature_test_vector_type ring_signature_test_vectors[] = {\n");
+    for (i = 0; i < 40; i++) {
+        test_borromean(i);
     }
-    printf("test_borromean done\n");
+    printf("};\n");
+    printf("\n\n");
     /*//test_rangeproof();
     //test_multiple_generators();*/
 }
