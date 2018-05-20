@@ -323,6 +323,13 @@ void print_hex(unsigned char* bytes, int n) {
     }
 }
 
+void print_hex_reverse(unsigned char* bytes, int n) {
+    int i;
+    for (i = n - 1; i >= 0; i--) {
+        printf("%02x", bytes[i]);
+    }
+}
+
 void print_hex_bytes(unsigned char* bytes, int n) {
     int i;
     printf("{");
@@ -395,6 +402,8 @@ static void test_borromean(int iterh) {
         }
         c += rsizes[i];
     }
+    CHECK(secp256k1_borromean_sign(&ctx->ecmult_ctx, &ctx->ecmult_gen_ctx, e0, s, pubs, k, sec, rsizes, secidx, nrings, m, 32));
+
     printf("{\n");
     printf("    .message = ");
     print_hex_bytes(m, 32);
@@ -468,14 +477,15 @@ static void test_borromean(int iterh) {
         printf("\n");
         c += rsizes[i];
     }
-    printf("    },\n");
+    printf("    }\n");
     printf("}");
-    if (iterh < 40 - 1)
+    if (iterh < 400 - 1)
         printf(",");
     printf("\n");
 
-    CHECK(secp256k1_borromean_sign(&ctx->ecmult_ctx, &ctx->ecmult_gen_ctx, e0, s, pubs, k, sec, rsizes, secidx, nrings, m, 32));
-    CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
+    /*CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs,
+     rsizes, nrings, m, 32));*/
+    /*
     i = secp256k1_rand32() % c;
     secp256k1_scalar_negate(&s[i],&s[i]);
     CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
@@ -490,6 +500,7 @@ static void test_borromean(int iterh) {
         }
         CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
     }
+    */
 }
 
 static void test_rangeproof(void) {
@@ -723,7 +734,7 @@ void run_rangeproof_tests(void) {
     //}*/
     printf("\n\n");
     printf("struct ring_signature_test_vector_type\n{\n");
-    printf("    const data_chunk message;\n");
+    printf("    const hash_digest message;\n");
     printf("    const ec_secret e;\n");
     printf("    const std::vector<size_t> secret_indexes;\n");
     printf("    const secret_list secrets;\n");
@@ -732,7 +743,7 @@ void run_rangeproof_tests(void) {
     printf("    const ring_signature::s_values_type s;\n");
     printf("};\n\n");
     printf("ring_signature_test_vector_type ring_signature_test_vectors[] = {\n");
-    for (i = 0; i < 40; i++) {
+    for (i = 0; i < 400; i++) {
         test_borromean(i);
     }
     printf("};\n");
