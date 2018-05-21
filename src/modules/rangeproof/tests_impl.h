@@ -479,10 +479,329 @@ static void test_borromean(int iterh) {
     }
     printf("    }\n");
     printf("}");
-    if (iterh < 400 - 1)
+    if (iterh < 100 - 1)
         printf(",");
     printf("\n");
 
+    /*CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs,
+     rsizes, nrings, m, 32));*/
+    /*
+    i = secp256k1_rand32() % c;
+    secp256k1_scalar_negate(&s[i],&s[i]);
+    CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
+    secp256k1_scalar_negate(&s[i],&s[i]);
+    secp256k1_scalar_set_int(&one, 1);
+    for(j = 0; j < 4; j++) {
+        i = secp256k1_rand32() % c;
+        if (secp256k1_rand32() & 1) {
+            secp256k1_gej_double_var(&pubs[i],&pubs[i], NULL);
+        } else {
+            secp256k1_scalar_add(&s[i],&s[i],&one);
+        }
+        CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
+    }
+    */
+}
+
+static void test_borromean_negator(int iterh) {
+    unsigned char e0[32];
+    secp256k1_scalar s[64];
+    secp256k1_gej pubs[64];
+    secp256k1_scalar k[8];
+    secp256k1_scalar sec[8];
+    secp256k1_ge ge;
+    secp256k1_scalar one;
+    unsigned char m[32];
+    size_t rsizes[8];
+    size_t secidx[8];
+    size_t nrings;
+    size_t i;
+    size_t j;
+    int c;
+    secp256k1_ge rge;
+    unsigned char tmp[33];
+    size_t size;
+    secp256k1_rand256_test(m);
+    nrings = 1 + (secp256k1_rand32()&7);
+    c = 0;
+    secp256k1_scalar_set_int(&one, 1);
+    if (secp256k1_rand32()&1) {
+        secp256k1_scalar_negate(&one, &one);
+    }
+    for (i = 0; i < nrings; i++) {
+        rsizes[i] = 1 + (secp256k1_rand32()&7);
+        secidx[i] = secp256k1_rand32() % rsizes[i];
+        random_scalar_order(&sec[i]);
+        random_scalar_order(&k[i]);
+        if(secp256k1_rand32()&7) {
+            sec[i] = one;
+        }
+        if(secp256k1_rand32()&7) {
+            k[i] = one;
+        }
+        for (j = 0; j < rsizes[i]; j++) {
+            random_scalar_order(&s[c + j]);
+            if(secp256k1_rand32()&7) {
+                s[i] = one;
+            }
+            if (j == secidx[i]) {
+                secp256k1_ecmult_gen(&ctx->ecmult_gen_ctx, &pubs[c + j], &sec[i]);
+            } else {
+                random_group_element_test(&ge);
+                random_group_element_jacobian_test(&pubs[c + j],&ge);
+            }
+        }
+        c += rsizes[i];
+    }
+    CHECK(secp256k1_borromean_sign(&ctx->ecmult_ctx, &ctx->ecmult_gen_ctx, e0, s, pubs, k, sec, rsizes, secidx, nrings, m, 32));
+    i = secp256k1_rand32() % c;
+    secp256k1_scalar_negate(&s[i],&s[i]);
+
+    printf("{\n");
+    printf("    .message = ");
+    print_hex_bytes(m, 32);
+    printf(",\n");
+    printf("    .e = base16_literal(\"");
+    print_hex(e0, 32);
+    printf("\"),\n");
+    printf("    .secret_indexes = {");
+    for (i = 0; i < nrings; i++) {
+        printf("%i", (int)rsizes[i]);
+        if (i < nrings - 1)
+            printf(", ");
+    }
+    printf("},\n");
+    printf("    .secrets = {\n");
+    for (i = 0; i < nrings; i++) {
+        printf("        base16_literal(\"");
+        print_scalar(&sec[i]);
+        printf("\")");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+    }
+    printf("    },\n");
+    printf("    .public_rings = {\n");
+    c = 0;
+    for (i = 0; i < nrings; i++) {
+        printf("        {\n");
+        for (j = 0; j < rsizes[i]; j++) {
+            printf("            base16_literal(\"");
+            secp256k1_ge_set_gej_var(&rge, &pubs[c + j]);
+            secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
+            print_hex(tmp, 33);
+            printf("\")");
+            if (j < rsizes[i] - 1)
+                printf(",");
+            printf("\n");
+        }
+        printf("        }");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+        c += rsizes[i];
+    }
+    printf("    },\n");
+    printf("    .k = {\n");
+    for (i = 0; i < nrings; i++) {
+        printf("        base16_literal(\"");
+        print_scalar(&k[i]);
+        printf("\")");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+    }
+    printf("    },\n");
+    printf("    .s = {\n");
+    c = 0;
+    for (i = 0; i < nrings; i++) {
+        printf("        {\n");
+        for (j = 0; j < rsizes[i]; j++) {
+            printf("            base16_literal(\"");
+            print_scalar(&s[c + j]);
+            printf("\")");
+            if (j < rsizes[i] - 1)
+                printf(",");
+            printf("\n");
+        }
+        printf("        }");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+        c += rsizes[i];
+    }
+    printf("    }\n");
+    printf("}");
+    if (iterh < 100 - 1)
+        printf(",");
+    printf("\n");
+
+    CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
+    /*CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs,
+     rsizes, nrings, m, 32));*/
+    /*
+    i = secp256k1_rand32() % c;
+    secp256k1_scalar_negate(&s[i],&s[i]);
+    CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
+    secp256k1_scalar_negate(&s[i],&s[i]);
+    secp256k1_scalar_set_int(&one, 1);
+    for(j = 0; j < 4; j++) {
+        i = secp256k1_rand32() % c;
+        if (secp256k1_rand32() & 1) {
+            secp256k1_gej_double_var(&pubs[i],&pubs[i], NULL);
+        } else {
+            secp256k1_scalar_add(&s[i],&s[i],&one);
+        }
+        CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
+    }
+    */
+}
+
+static void test_borromean_faulty(int iterh) {
+    unsigned char e0[32];
+    secp256k1_scalar s[64];
+    secp256k1_gej pubs[64];
+    secp256k1_scalar k[8];
+    secp256k1_scalar sec[8];
+    secp256k1_ge ge;
+    secp256k1_scalar one;
+    unsigned char m[32];
+    size_t rsizes[8];
+    size_t secidx[8];
+    size_t nrings;
+    size_t i;
+    size_t j;
+    int c;
+    secp256k1_ge rge;
+    unsigned char tmp[33];
+    size_t size;
+    secp256k1_rand256_test(m);
+    nrings = 1 + (secp256k1_rand32()&7);
+    c = 0;
+    secp256k1_scalar_set_int(&one, 1);
+    if (secp256k1_rand32()&1) {
+        secp256k1_scalar_negate(&one, &one);
+    }
+    for (i = 0; i < nrings; i++) {
+        rsizes[i] = 1 + (secp256k1_rand32()&7);
+        secidx[i] = secp256k1_rand32() % rsizes[i];
+        random_scalar_order(&sec[i]);
+        random_scalar_order(&k[i]);
+        if(secp256k1_rand32()&7) {
+            sec[i] = one;
+        }
+        if(secp256k1_rand32()&7) {
+            k[i] = one;
+        }
+        for (j = 0; j < rsizes[i]; j++) {
+            random_scalar_order(&s[c + j]);
+            if(secp256k1_rand32()&7) {
+                s[i] = one;
+            }
+            if (j == secidx[i]) {
+                secp256k1_ecmult_gen(&ctx->ecmult_gen_ctx, &pubs[c + j], &sec[i]);
+            } else {
+                random_group_element_test(&ge);
+                random_group_element_jacobian_test(&pubs[c + j],&ge);
+            }
+        }
+        c += rsizes[i];
+    }
+    CHECK(secp256k1_borromean_sign(&ctx->ecmult_ctx, &ctx->ecmult_gen_ctx, e0, s, pubs, k, sec, rsizes, secidx, nrings, m, 32));
+
+    secp256k1_scalar_set_int(&one, 1);
+    int jj;
+    for(jj = 0; jj < 4; jj++) {
+        i = secp256k1_rand32() % c;
+        if (secp256k1_rand32() & 1) {
+            secp256k1_gej_double_var(&pubs[i],&pubs[i], NULL);
+        } else {
+            secp256k1_scalar_add(&s[i],&s[i],&one);
+        }
+
+    printf("{\n");
+    printf("    .message = ");
+    print_hex_bytes(m, 32);
+    printf(",\n");
+    printf("    .e = base16_literal(\"");
+    print_hex(e0, 32);
+    printf("\"),\n");
+    printf("    .secret_indexes = {");
+    for (i = 0; i < nrings; i++) {
+        printf("%i", (int)rsizes[i]);
+        if (i < nrings - 1)
+            printf(", ");
+    }
+    printf("},\n");
+    printf("    .secrets = {\n");
+    for (i = 0; i < nrings; i++) {
+        printf("        base16_literal(\"");
+        print_scalar(&sec[i]);
+        printf("\")");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+    }
+    printf("    },\n");
+    printf("    .public_rings = {\n");
+    c = 0;
+    for (i = 0; i < nrings; i++) {
+        printf("        {\n");
+        for (j = 0; j < rsizes[i]; j++) {
+            printf("            base16_literal(\"");
+            secp256k1_ge_set_gej_var(&rge, &pubs[c + j]);
+            secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
+            print_hex(tmp, 33);
+            printf("\")");
+            if (j < rsizes[i] - 1)
+                printf(",");
+            printf("\n");
+        }
+        printf("        }");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+        c += rsizes[i];
+    }
+    printf("    },\n");
+    printf("    .k = {\n");
+    for (i = 0; i < nrings; i++) {
+        printf("        base16_literal(\"");
+        print_scalar(&k[i]);
+        printf("\")");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+    }
+    printf("    },\n");
+    printf("    .s = {\n");
+    c = 0;
+    for (i = 0; i < nrings; i++) {
+        printf("        {\n");
+        for (j = 0; j < rsizes[i]; j++) {
+            printf("            base16_literal(\"");
+            print_scalar(&s[c + j]);
+            printf("\")");
+            if (j < rsizes[i] - 1)
+                printf(",");
+            printf("\n");
+        }
+        printf("        }");
+        if (i < nrings - 1)
+            printf(",");
+        printf("\n");
+        c += rsizes[i];
+    }
+    printf("    }\n");
+    printf("}");
+    if (jj < 4 - 1)
+        printf(",\n");
+    }
+    if (iterh < 100 - 1)
+        printf(",");
+    printf("\n");
+
+    CHECK(!secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs, rsizes, nrings, m, 32));
     /*CHECK(secp256k1_borromean_verify(&ctx->ecmult_ctx, NULL, e0, s, pubs,
      rsizes, nrings, m, 32));*/
     /*
@@ -732,7 +1051,9 @@ void run_rangeproof_tests(void) {
     //for (i = 0; i < 10*count; i++) {
     //    test_pedersen();
     //}*/
-    printf("\n\n");
+    printf("#include <bitcoin/bitcoin.hpp>\n");
+    printf("using namespace bc;\n");
+    printf("\n");
     printf("struct ring_signature_test_vector_type\n{\n");
     printf("    const hash_digest message;\n");
     printf("    const ec_secret e;\n");
@@ -740,11 +1061,21 @@ void run_rangeproof_tests(void) {
     printf("    const secret_list secrets;\n");
     printf("    const key_rings public_rings;\n");
     printf("    const secret_list k;\n");
-    printf("    const ring_signature::s_values_type s;\n");
+    printf("    const ring_signature::proof_list s;\n");
     printf("};\n\n");
     printf("ring_signature_test_vector_type ring_signature_test_vectors[] = {\n");
-    for (i = 0; i < 400; i++) {
+    for (i = 0; i < 100; i++) {
         test_borromean(i);
+    }
+    printf("};\n");
+    printf("ring_signature_test_vector_type ring_signature_negative_test_vectors[] = {\n");
+    for (i = 0; i < 100; i++) {
+        test_borromean_negator(i);
+    }
+    printf("};\n");
+    printf("ring_signature_test_vector_type ring_signature_faulty_test_vectors[] = {\n");
+    for (i = 0; i < 100; i++) {
+        test_borromean_faulty(i);
     }
     printf("};\n");
     printf("\n\n");
